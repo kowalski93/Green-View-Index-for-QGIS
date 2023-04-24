@@ -26,7 +26,7 @@ hasProcessingProvider=yes
 # Tags are comma separated with spaces allowed
 tags=python, greenview, gvi, green view index, urban green, street view
 
-homepage=http://homepage
+homepage=https://github.com/kowalski93/Green-View-Index-for-QGIS
 category=Analysis
 icon=icon.png
 # experimental flag
