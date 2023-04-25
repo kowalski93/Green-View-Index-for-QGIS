@@ -201,7 +201,7 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         
         #set the fields for the output layer. It's one Double type field where the GVI value will be stored, and a unique ID field in order to join with the source layer.
         fields = QgsFields()
-        fields.append(QgsField(id_field))
+        fields.append(QgsField(id_field,QVariant.Double))
         fields.append(QgsField('GVI', QVariant.Double))
         
         (sink, dest_id) = self.parameterAsSink(
@@ -277,7 +277,7 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         GVIS.append([int(pointID_2),d/6])
         
         #write a csv file of the output. It will contain point IDs and corresponding GVI values
-        csvfile=os.path.join(output_path,"Points_GVIs.csv")
+        csvfile=os.path.join(img_folder,"Points_GVIs.csv")
         
         with open(csvfile, 'w') as f:
             write = csv.writer(f)
