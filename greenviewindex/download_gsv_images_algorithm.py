@@ -129,7 +129,7 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
         Pitch values: Specifies the up or down angle of the camera. If multiple angles are needed, they must be separated by comma.
         Image size: Specifies the output image size in width x height.
         Option to geotag images: If set, the images' metadata will be edited to include their latitude and longitude coordinates. You can then use the Import photos plugin to import them into your project.
-        Output folder: A real folder and not a temporary one must be set. 
+        Output folder: A real folder and not a temporary one must be set. Also, it must be a folder dedicated for those images, with no other image files.
         More info on how to obtain a key and documentation here: 
         https://developers.google.com/maps/documentation/streetview/overview""")
 
