@@ -6,7 +6,7 @@
 name=Green View Index
 qgisMinimumVersion=3.0
 description=A plugin for Green View Index (GVI) operations
-version=0.1
+version=0.2
 author=Alexandros Voukenas
 email=avoukenas@gmail.com
 
@@ -21,7 +21,7 @@ repository=https://github.com/kowalski93/Green-View-Index-for-QGIS
 
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
-# changelog=
+ changelog= Added code to include the plugin in Plugin menu. Fixed bug in Calculate Green View Index script. Minor updates on documentation and script descriptions
 
 # Tags are comma separated with spaces allowed
 tags=python, greenview, gvi, green view index, urban green, street view
