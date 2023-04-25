@@ -61,16 +61,37 @@ class GreenViewIndexPlugin(object):
 
     def initGui(self):
         self.initProcessing()
-        #icon = os.path.join(os.path.join(cmd_folder, 'logo.png'))
-        #self.action = QAction(QIcon(icon),u"Green View Index", self.iface.mainWindow())
-        #self.action.triggered.connect(self.run)
-        #self.iface.addPluginToMenu(u"&Green View Index", self.action)
-        #self.iface.addToolBarIcon(self.action)
+        
+        actionGen = QAction(
+            QIcon(os.path.join(os.path.join(cmd_folder,'greenviewindex', 'rand_points_logo.png'))),
+            u"Generate Sample Points", self.iface.mainWindow())
+        actionGen.triggered.connect(self.runGen)
+
+        actionDown = QAction(
+            QIcon(os.path.join(os.path.join(cmd_folder,'greenviewindex', 'download_logo.png'))),
+            u"Download Google Street View Images", self.iface.mainWindow())
+        actionDown.triggered.connect(self.runDown)
+
+        actionCalc = QAction(
+            QIcon(os.path.join(os.path.join(cmd_folder,'greenviewindex', 'calculate_logo.png'))),
+            u"Calculate Green View Index", self.iface.mainWindow())
+        actionCalc.triggered.connect(self.runCalc)
+        
+        self.actions = [actionGen,actionDown,actionCalc]
+        for action in self.actions:
+            self.iface.addPluginToMenu(u"&Green View Index", action)
+            self.iface.addToolBarIcon(action)
 
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)
-        #self.iface.removePluginMenu(u"&Green View Index", self.action)
-        #self.iface.removeToolBarIcon(self.action)
+        for action in self.actions:
+            self.iface.removePluginMenu(u"&Green View Index", action)
+            self.iface.removeToolBarIcon(action)
+            del action
         
-    def run(self):
-        processing.execAlgorithmDialog("Green View Index")
+    def runGen(runGen):
+        processing.execAlgorithmDialog("Green View Index:generate_sample_points")
+    def runDown(runDown):
+        processing.execAlgorithmDialog("Green View Index:download_gsv_images")
+    def runCalc(runCalc):
+        processing.execAlgorithmDialog("Green View Index:calculate_green_view_index")
