@@ -64,6 +64,7 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
     INPUT_HEADINGS='HEADINGS'
     INPUT_PITCHES='PITCHES'
     INPUT_GEOTAG='GEOTAG'
+    INPUT_METADATA_ONLY='METADATA ONLY'
     
     OUTPUT = 'OUTPUT FOLDER'
 
@@ -128,7 +129,8 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
         Heading values: Indicate the compass of the camera, i.e. the horizontal angle(s) in which to obtain the images. If multiple angles are needed, they must be separated by comma.
         Pitch values: Specifies the up or down angle of the camera. If multiple angles are needed, they must be separated by comma.
         Image size: Specifies the output image size in width x height.
-        Option to geotag images: If set, the images' metadata will be edited to include their latitude and longitude coordinates. You can then use the Import photos plugin to import them into your project.
+        Option to geotag images: If selected, the images' metadata will be edited to include their latitude and longitude coordinates. You can then use the Import photos plugin to import them into your project.
+        Option to download metadata only: If selected, no images will be downloaded, only a csv file will be created with the image metadata (status and date) for each point. This does not affect your API cost balance.
         Output folder: A real folder and not a temporary one must be set. Also, it must be a folder dedicated for those images, with no other image files.
         More info on how to obtain a key and documentation here: 
         https://developers.google.com/maps/documentation/streetview/overview""")
@@ -201,6 +203,13 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
                 self.tr('Geotag images'),
                 defaultValue=False
             )
+        )
+        self.addParameter(
+                QgsProcessingParameterBoolean(
+                    self.INPUT_METADATA_ONLY,
+                    self.tr('Metadata only'),
+                    defaultValue=False
+            )
         )        
         # We add a feature sink in which to store our processed features (this
         # usually takes the form of a newly created vector layer when the
@@ -222,6 +231,7 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
             self.INPUT_POINTS,
             context
         )
+        
         api_key=self.parameterAsString(
             parameters,
             self.INPUT_KEY,
@@ -269,6 +279,12 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
         if geotag==True:
             from GPSPhoto import gpsphoto
             
+        metadata_only=self.parameterAsBoolean(
+            parameters,
+            self.INPUT_METADATA_ONLY,
+            context
+        )
+        
         output_path=self.parameterAsString(
             parameters,
             self.OUTPUT,
@@ -276,7 +292,7 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
         )
 
         if source is None:
-            raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
+            raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT_POINTS))
         
         #list the unique values in the Unique ID field of the input layer    
         unique_values=processing.run("qgis:listuniquevalues", 
@@ -307,7 +323,9 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
         #prepare a list for the points
         csv_fields=["pointID","status","date"]
         survey_point_list=[]
-
+        
+        p=999
+        
         for i,feature in enumerate(it):
             
             #get elements from the feature. Latitude, longitude, and the value from its ID field
@@ -322,7 +340,7 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
             metadata=requests.get(requestMD_link).json()
                     
             status=metadata['status'] 
-            
+            date=''
             if status=="OK": #if image was found
             
                 #get the date of the image at that point. Year and Month is as detailed as it goes.
@@ -330,23 +348,25 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
             
                 year=int(date.split("-")[0])
                 month=int(date.split("-")[1])
+                
+                if metadata_only==False:
                 #iterate through the heading and pitch values to get street view images at the lat and long positions
-                for heading in headings:
-                    for pitch in pitches:
-                        requestSV_link="{}size={}&location={}&fov={}&heading={}&pitch={}&key={}".format(SV_link,img_size,location,fov,heading,pitch,api_key)
-                        img_data=requests.get(requestSV_link).content
-                        
-                        #write it on the folder, with a name based on the ID, the heading and the pitch. 
-                        filename=r"{}//pointID_{}_heading_{}_pitch_{}".format(output_path,point_ID,heading,pitch)+".jpg"
+                    for heading in headings:
+                        for pitch in pitches:
+                            requestSV_link="{}size={}&location={}&fov={}&heading={}&pitch={}&key={}".format(SV_link,img_size,location,fov,heading,pitch,api_key)
+                            img_data=requests.get(requestSV_link).content
+                            
+                            #write it on the folder, with a name based on the ID, the heading and the pitch. 
+                            filename=r"{}//pointID_{}_heading_{}_pitch_{}".format(output_path,point_ID,heading,pitch)+".jpg"
 
-                        with open(filename,'wb') as handler:
-                            handler.write(img_data)
-                        
-                        #if geotag was selected, also geotag the image based on the lat and long we have
-                        if geotag==True:
-                            photo=gpsphoto.GPSPhoto(filename)
-                            info = gpsphoto.GPSInfo((long,lat))
-                            photo.modGPSData(info,filename)
+                            with open(filename,'wb') as handler:
+                                handler.write(img_data)
+                            
+                            #if geotag was selected, also geotag the image based on the lat and long we have
+                            if geotag==True:
+                                photo=gpsphoto.GPSPhoto(filename)
+                                info = gpsphoto.GPSInfo((long,lat))
+                                photo.modGPSData(info,filename)
                             
                 #populate the list that keeps ID, status and image date of the points
                 survey_point_list.append([point_ID,status,date])
@@ -356,8 +376,10 @@ class DownloadGoogleStreetViewImages(QgsProcessingAlgorithm):
             #push some info on percentage of points completed
             pct=int((i+1)/len(unique_values)*100)
             if pct in [10,20,25,30,33,40,50,60,66,70,75,80,90,100]:
-                feedback.pushInfo('Finished with {}% of points'.format(pct))
-                
+                if pct!=p:
+                    feedback.pushInfo('Finished with {}% of points'.format(pct))
+                    p=pct
+                    
         #operations to write a csv and a csvt file with the data of the points (status and date)
         csvfile=os.path.join(output_path,"Points_data.csv")
         csvtfile=os.path.join(output_path,"Points_data.csvt")
