@@ -211,19 +211,41 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
             )
         #A list to store point IDs and corresponding GVIs
         GVIS=[["pointID","GVI"]]
-        #An initial value of zero, to help calculate GVIs
-        d=0
+        
         #Get all the image filenames from the specified directory
         filenames=os.listdir(img_folder)
-        filename_init=filenames[0]
-        all_imgs=len(filenames)
-        #variable 'pointID_2' comes from the name of the image on the drive. For the first time, we use the first filename of the filename_init list
-        pointID_2=filename_init.split("_")[1]
+        #We want to create a list, the elements of which will be lists of each filename corresponding to the same point ID, e.g.:
+        #[[pointID_1_heading_0_pitch_0,pointID_1_heading_60_pitch_0],
+        # [pointID_2_heading_0_pitch_0,pointID_2_heading_60_pitch_0]
+        # [pointID_3_heading_0_pitch_0,pointID_3_heading_60_pitch_0]]
+        filenames_new=[]
+        IDs_unique=[]
         
-        #iterate through the filenames
-        for i,filename in enumerate(filenames):
+        #look up through all the filenames and keep a list of all the pointIDs
+        for filename in filenames:
             if filename.endswith(".jpg") and "GVI" not in filename:
-                #for that filename, get the pointID from its name
+                filenames_new.append(filename)
+                IDs_unique.append(filename.split("_")[1])
+                
+        #We need to figure out the number of unique IDs in the filenames list. We use a set for that
+        IDs_unique_set=set(IDs_unique)
+        IDs_unique=list(IDs_unique_set)
+        num_ids=len(IDs_unique)
+        #we use numpy array split to split our list into the desired result (see above)
+        filenames_splitted=np.array_split(filenames_new,num_ids)
+        
+        #these two lines help at communicating progress
+        all_imgs=len(filenames_new)    
+        p=999;k=0
+        
+        #for each filename group, i.e for each sublist within the mother list:
+        for filename_group in filenames_splitted:
+            
+            d=0 #reset counter
+            
+            #for each filename within that group:
+            for i,filename in enumerate(filename_group):
+                #for that filename, get the pointID from its name, and its full path on the drive
                 pointID=filename.split("_")[1]
                 fullpath=os.path.join(img_folder,filename)
                 
@@ -234,8 +256,8 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
                 g = img[:,:,1]
                 b = img[:,:,2]
                 
-                #create an array of 255s with the same shape as input image. In the final image, pixels with value 255 will correspond to vegetation, while value 0 is anything else
                 GVI_img=np.ones(b.shape,dtype=np.uint8)*255
+                #create an array of 255s with the same shape as input image. In the final image, pixels with value 255 will correspond to vegetation, while value 0 is anything else
                 
                 #convert b g r bands to uint16
                 b=np.int16(b); g=np.int16(g); r=np.int16(r)
@@ -253,29 +275,23 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
                 GVI_img=modal(GVI_img,np.ones((11,11))) #an additional majority filter to smooth the result
                 size=b.shape[0]*b.shape[1]
                 
-                GVIorig=round(len(GVI_img[GVI_img==255])/size,2)#calculate the GVI for that particular image
-                
-                if pointID==pointID_2: #if we are still on images of the same point, i.e, we didn't change pointID yet
-                    d=d+GVIorig #sum the GVI values we have so far
-                else: #if not, append that sum to the GVIs list, and reset the counter to 0
-                    GVIS.append([int(pointID_2),d/6]) 
-                    d=0
-                    
-                #read pointID_2 from the filename we are now. This will be used in the next iteration and the conditional on line 258
-                pointID_2=filename.split("_")[1]
-                
-                #if user had checked to write green mask, it will be written on the directory
+                GVIorig=round(len(GVI_img[GVI_img==255])/size,2)#calculate the GVI for that particular image            
+                d=d+GVIorig #add that to the counter
+                k+=1#keep track of all images that have been parsed
                 if write_masked==True:
                     imsave(fullpath[0:-4]+"_GVI.jpg",GVI_img)
-                    
-            #some feedback on the percentage of images completed        
-            pct=int((i+1)/all_imgs*100)
-            if pct in [10,20,25,30,33,40,50,60,66,70,75,80,90,100]:
-                feedback.pushInfo('Finished with {}% of images'.format(pct))
                 
-        #The GVI for the final point has to be appended outside of the iterator, because that case cannot be checked with the if else of line 258        
-        GVIS.append([int(pointID_2),d/6])
-        
+                #communicate percentage completed
+                pct=int((k/all_imgs)*100)
+                if pct in [10,20,25,30,33,40,50,60,66,70,75,80,90,100]:
+                    if pct!=p:
+                        feedback.pushInfo('Finished with {}% of images'.format(pct))
+                        p=pct
+                            
+            #calculate the GVI for all the images corresponding to the point. Append it to the GVIS list            
+            GVI_filename=d/(i+1)
+            GVIS.append([int(pointID),GVI_filename])
+
         #write a csv file of the output. It will contain point IDs and corresponding GVI values
         csvfile=os.path.join(img_folder,"Points_GVIs.csv")
         
