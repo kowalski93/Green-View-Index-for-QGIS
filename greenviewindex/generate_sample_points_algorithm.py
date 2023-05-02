@@ -320,6 +320,12 @@ class GenerateSamplePoints(QgsProcessingAlgorithm):
                 'TARGET_CRS': 'EPSG:4326',
                 'OUTPUT': 'TEMPORARY_OUTPUT'},
                 context=context, feedback=None)['OUTPUT']
+                
+        #by default, the result is created as Multipart, so convert to singlepart:
+        random_points=processing.run("native:multiparttosingleparts", 
+                {'INPUT':random_points,
+                'OUTPUT':'TEMPORARY_OUTPUT'},
+                context=context, feedback=None)['OUTPUT']
         
         #set the sink parameter, where the output will be written
         (sink, dest_id) = self.parameterAsSink(
