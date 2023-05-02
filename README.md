@@ -31,4 +31,4 @@ You also need to register to Google Cloud Console and generate a Street View API
 
 To install the plugin, use the plugin repository from QGIS (recommended), or download this repository as .zip file and use the option Install from ZIP  from Plugin manager.
 
-Full documentaion can be found in the [pdf document](https://github.com/kowalski93/Green-View-Index-for-QGIS/blob/main/Green%20View%20Index%20for%20QGIS.pdf) of this repository.
+Full documentaion can be found in the [pdf document](https://github.com/kowalski93/Green-View-Index-for-QGIS/blob/main/Green%20View%20Index%20for%20QGIS.pdf) of this repository. Make sure to read it carefully. 
