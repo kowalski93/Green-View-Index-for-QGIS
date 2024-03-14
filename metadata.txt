@@ -6,7 +6,7 @@
 name=Green View Index
 qgisMinimumVersion=3.0
 description=A plugin for Green View Index (GVI) operations
-version=0.3
+version=1.1
 author=Alexandros Voukenas
 email=avoukenas@gmail.com
 
@@ -21,7 +21,7 @@ repository=https://github.com/kowalski93/Green-View-Index-for-QGIS
 
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
- changelog= Fixed the way GVI is summed accross multiple images. Now works with single images as well. Improved the way results are communicated. Added option to download image metadata only.
+ changelog= Added another algorithm (Dong et al., 2018) to extract vegetation pixels in images. Minor improvements to the code. Updated documentation.
 
 # Tags are comma separated with spaces allowed
 tags=python, greenview, gvi, green view index, urban green, street view
@@ -30,7 +30,7 @@ homepage=https://github.com/kowalski93/Green-View-Index-for-QGIS
 category=Analysis
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False

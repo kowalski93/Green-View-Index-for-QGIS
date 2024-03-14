@@ -53,6 +53,7 @@ from qgis import processing
 import requests,csv,os
 from skimage.io import imread,imsave
 from skimage.filters.rank import modal
+from skimage.color import rgb2hsv
 import numpy as np
 
 class CalculateGreenViewIndex(QgsProcessingAlgorithm):
@@ -62,6 +63,7 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
     INPUT_FIELD="ID FIELD"
     INPUT_FOLDER = 'INPUT FOLDER'
     INPUT_WRITE_MASKED='WRITE MASKED'
+    INPUT_ALGORITHM='INPUT ALGORITHM'
     
     OUTPUT = 'OUTPUT'
 
@@ -120,8 +122,9 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         parameters and outputs associated with it..
         """
         return self.tr("""Given an input sample points layer and a folder containing the Google Street View images for those points, this script calculates the Green View Index for each point.
-                        The input folder is the same as the output folder from script 'Download Google Street View Images'. The Input sample points layer is the same as for that script as well.
+                        The Input folder is the same as the output folder from script 'Download Google Street View Images'. The Input sample points layer is the same as for that script as well.
                         The Unique ID field must also be set, in order to create correspondence between point feature and image file name.
+                        The Algorithm to extract vegetation pixels can best to chose between Li et al., 2015 and Dong et al., 2018 (check documentation). Li et al. is the default one, leave it at that if you are unsure.
                         The Write green mask images option is used to create output images that mask for non vegetation (vegetation pixel=255, everything else=0).""")
 
     def initAlgorithm(self, config=None):
@@ -145,7 +148,16 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
                 '',
                 self.INPUT_POINTS)
         )
-
+        
+        self.addParameter(
+        QgsProcessingParameterEnum(
+            self.INPUT_ALGORITHM,
+            self.tr('Algorithm to extract vegetation pixels'),
+            options=[self.tr('Li et al., 2015'),self.tr('Dong et al., 2018')],
+            defaultValue=0,
+            optional=False)
+        )
+        
         self.addParameter(
             QgsProcessingParameterFolderDestination(
                 self.INPUT_FOLDER,
@@ -196,6 +208,12 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         output_path=self.parameterAsString(
             parameters,
             self.OUTPUT,
+            context
+        )
+        
+        algorithm=self.parameterAsEnum(
+            parameters,
+            self.INPUT_ALGORITHM,
             context
         )
         
@@ -256,22 +274,31 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
                 g = img[:,:,1]
                 b = img[:,:,2]
                 
-                GVI_img=np.ones(b.shape,dtype=np.uint8)*255
                 #create an array of 255s with the same shape as input image. In the final image, pixels with value 255 will correspond to vegetation, while value 0 is anything else
+                GVI_img=np.ones(b.shape,dtype=np.uint8)*255
+                
                 
                 #convert b g r bands to uint16
                 b=np.int16(b); g=np.int16(g); r=np.int16(r)
                 
+                if algorithm==0:
                 #Extract green pixels according to Li et. al., 2015
-                diff1=g-r
-                diff2=g-b
-                diff=diff1*diff2
-                
-                GVI_img[diff1<=0]=0
-                GVI_img[diff2<=0]=0
-                GVI_img[diff<50]=0
-                GVI_img[(b+g+r)>520]=0 #an additional threshold to filter out too bright pixels
-                
+                    diff1=g-r
+                    diff2=g-b
+                    diff=diff1*diff2
+                    
+                    GVI_img[diff1<=0]=0
+                    GVI_img[diff2<=0]=0
+                    GVI_img[diff<50]=0
+                    
+                    
+                elif algorithm==1:
+                #Extract green pixels according to Dong et. al., 2018
+                    hsv_img = rgb2hsv(img)
+                    hue_img = hsv_img[:, :, 0]*255
+                    GVI_img[(hue_img>75) & (hue_img<170)]=0
+                    
+                GVI_img[(b+g+r)>520]=0 #an additional threshold to filter out too bright pixels    
                 GVI_img=modal(GVI_img,np.ones((11,11))) #an additional majority filter to smooth the result
                 size=b.shape[0]*b.shape[1]
                 
@@ -301,7 +328,7 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         csv_layer=QgsVectorLayer(csvfile,'gvis_csv')
         
         #an intermediate field calculator to be able to join with the initial layer
-        points_str_field=processing.run("native:fieldcalculator", 
+        points_str_field=processing.run("qgis:fieldcalculator", 
         {'INPUT':parameters[self.INPUT_POINTS],
         'FIELD_NAME':'id_str',
         'FIELD_TYPE':2,
@@ -312,7 +339,7 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         '--overwrite': True})['OUTPUT']
         
         #perform the join with the initial layer
-        final_layer_joined=processing.run("native:joinattributestable", 
+        final_layer_joined=processing.run("qgis:joinattributestable", 
         {'INPUT':points_str_field,
         'FIELD':'id_str',
         'INPUT_2':csv_layer,
