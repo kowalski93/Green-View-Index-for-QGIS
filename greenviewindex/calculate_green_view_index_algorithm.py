@@ -225,7 +225,7 @@ class CalculateGreenViewIndex(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(
             parameters,
             self.OUTPUT,
-            context, fields, 4, source.sourceCrs()
+            context, fields, source.wkbType(), source.sourceCrs()
             )
         #A list to store point IDs and corresponding GVIs
         GVIS=[["pointID","GVI"]]

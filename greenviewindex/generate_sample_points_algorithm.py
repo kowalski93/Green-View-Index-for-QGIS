@@ -331,7 +331,7 @@ class GenerateSamplePoints(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(
         parameters,
         self.OUTPUT,
-        context, fields, 4, QgsCoordinateReferenceSystem("EPSG:4326")
+        context, fields, random_points.wkbType(), QgsCoordinateReferenceSystem("EPSG:4326")
         )
         
         #write the output in the sink (feature, geometry, and id attribute)
